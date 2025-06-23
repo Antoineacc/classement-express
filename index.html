@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Classement Express - Jeu du jour</title>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -34,6 +35,12 @@
       padding: 1rem;
       margin-bottom: 0.5rem;
       cursor: grab;
+      user-select: none;
+    }
+
+    .item.selected {
+      background-color: #d1ecf1;
+      border: 2px solid #0c5460;
     }
 
     button {
@@ -114,11 +121,13 @@
       }
     });
 
-    function activateDragAndDrop() {
+    function activateInteraction() {
       const items = document.querySelectorAll('.item');
       let dragged;
+      let selected = null;
 
       items.forEach(item => {
+        // Desktop drag
         item.addEventListener('dragstart', e => {
           dragged = item;
           e.dataTransfer.effectAllowed = 'move';
@@ -140,6 +149,25 @@
             } else {
               list.insertBefore(dragged, item);
             }
+          }
+        });
+
+        // Mobile tap-to-swap
+        item.addEventListener('click', () => {
+          if (item.getAttribute('draggable') === 'false') return;
+
+          if (selected === item) {
+            selected.classList.remove('selected');
+            selected = null;
+          } else if (selected) {
+            const temp = item.textContent;
+            item.textContent = selected.textContent;
+            selected.textContent = temp;
+            selected.classList.remove('selected');
+            selected = null;
+          } else {
+            selected = item;
+            item.classList.add('selected');
           }
         });
       });
@@ -172,7 +200,7 @@
           document.getElementById('validateBtn').disabled = true;
           document.querySelectorAll('.item').forEach(el => el.setAttribute('draggable', 'false'));
         } else {
-          activateDragAndDrop();
+          activateInteraction();
           document.getElementById('validateBtn').disabled = false;
         }
 
