@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Classement Express - Jeu du jour</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .instruction {
+      margin-bottom: 1rem;
+    }
+
+    #items {
+      list-style: none;
+      padding: 0;
+    }
+
+    .item {
+      background-color: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      cursor: grab;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #validateBtn:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    .result {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    #tropheeContainer {
+      margin-top: 1rem;
+      text-align: center;
+    }
+
+    #tropheeContainer img {
+      max-width: 100px;
+    }
+
+    #debugResetBtn {
+      display: none;
+      background-color: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Classement Express</h1>
+  <p id="gameDate" class="subtext"></p>
+  <button id="debugResetBtn">🔧 Rejouer (debug)</button>
+
+  <p class="instruction" id="instruction">Chargement du jeu...</p>
+  <ul id="items"></ul>
+  <p id="scoreDisplay">🔥 Score actuel : 0</p>
+  <div id="tropheeContainer"></div>
+  <button id="validateBtn" onclick="checkOrder()" disabled>Valider</button>
+  <button id="resetBtn">🔄 Rejouer</button>
+  <p class="result" id="result"></p>
+
+  <script>
+    let currentGame = null;
+    const forcedDate = null;
+    const today = forcedDate || new Date().toISOString().slice(0, 10);
+    const playKey = "classement_express_" + today;
+    const attemptKey = playKey + "_attempts";
+    const scoreKey = "classement_express_score";
+    const alreadyPlayed = localStorage.getItem(playKey);
+
+    document.getElementById('gameDate').textContent = `📅 Jeu du ${today} (UTC+2)`;
+
+    const debugResetBtn = document.getElementById('debugResetBtn');
+    debugResetBtn.addEventListener('click', () => {
+      localStorage.removeItem(playKey);
+      localStorage.removeItem(attemptKey);
+      location.reload();
+    });
+
+    window.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.shiftKey && e.code === 'KeyR') {
+        e.preventDefault();
+        debugResetBtn.style.display = debugResetBtn.style.display === 'none' ? 'inline-block' : 'none';
+      }
+    });
+
+    function activateDragAndDrop() {
+      const items = document.querySelectorAll('.item');
+      let dragged;
+
+      items.forEach(item => {
+        item.addEventListener('dragstart', e => {
+          dragged = item;
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragover', e => {
+          e.preventDefault();
+        });
+
+        item.addEventListener('drop', e => {
+          e.preventDefault();
+          if (dragged !== item) {
+            const list = item.parentNode;
+            const children = Array.from(list.children);
+            const draggedIndex = children.indexOf(dragged);
+            const droppedIndex = children.indexOf(item);
+            if (draggedIndex < droppedIndex) {
+              list.insertBefore(dragged, item.nextSibling);
+            } else {
+              list.insertBefore(dragged, item);
+            }
+          }
+        });
+      });
+    }
+
+    async function loadGameOfTheDay() {
+      try {
+        const res = await fetch('data.json');
+        const data = await res.json();
+        currentGame = data.find(game => game.date === today);
+
+        if (!currentGame) {
+          document.getElementById('instruction').textContent = "Pas de jeu disponible aujourd'hui.";
+          return;
+        }
+
+        document.getElementById('instruction').textContent = "🔢 " + currentGame.instruction;
+        const ul = document.getElementById('items');
+        ul.innerHTML = '';
+        currentGame.items.forEach(item => {
+          const li = document.createElement('li');
+          li.className = 'item';
+          li.textContent = item;
+          li.setAttribute('draggable', 'true');
+          ul.appendChild(li);
+        });
+
+        if (alreadyPlayed === "correct") {
+          document.getElementById('result').textContent = "✅ Tu as déjà joué aujourd'hui.";
+          document.getElementById('validateBtn').disabled = true;
+          document.querySelectorAll('.item').forEach(el => el.setAttribute('draggable', 'false'));
+        } else {
+          activateDragAndDrop();
+          document.getElementById('validateBtn').disabled = false;
+        }
+
+        updateScoreDisplay();
+
+      } catch (error) {
+        console.error("Erreur lors du chargement :", error);
+        document.getElementById('instruction').textContent = "Erreur lors du chargement du jeu.";
+      }
+    }
+
+    function checkOrder() {
+      if (localStorage.getItem(playKey) === "correct") {
+        alert("Tu as déjà gagné aujourd'hui.");
+        return;
+      }
+
+      const currentOrder = Array.from(document.querySelectorAll('.item')).map(el => el.textContent);
+      const isCorrect = JSON.stringify(currentOrder) === JSON.stringify(currentGame.solution);
+
+      const result = document.getElementById('result');
+
+      if (isCorrect) {
+        result.textContent = "🎉 Bravo ! +1 point";
+        result.style.color = "green";
+        localStorage.setItem(playKey, "correct");
+
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+        let score = parseInt(localStorage.getItem(scoreKey)) || 0;
+        score += 1;
+        localStorage.setItem(scoreKey, score);
+
+        document.getElementById('validateBtn').disabled = true;
+        document.querySelectorAll('.item').forEach(el => el.setAttribute('draggable', 'false'));
+
+        updateScoreDisplay();
+      } else {
+        result.textContent = "❌ Mauvais ordre. Essaie encore !";
+        result.style.color = "red";
+      }
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      if (localStorage.getItem(playKey) === "correct") {
+        alert("Tu as déjà terminé le jeu aujourd'hui !");
+        return;
+      }
+      localStorage.removeItem(playKey);
+      location.reload();
+    });
+
+    function updateScoreDisplay() {
+      const score = parseInt(localStorage.getItem(scoreKey)) || 0;
+      document.getElementById('scoreDisplay').textContent = `🔥 Score actuel : ${score}`;
+      updateTrophee(score);
+    }
+
+    function updateTrophee(score) {
+      const container = document.getElementById('tropheeContainer');
+      const levels = [
+        { score: 5, image: "bronze.png", label: "Bronze" },
+        { score: 10, image: "argent.png", label: "Argent" },
+        { score: 20, image: "or.png", label: "Or" },
+        { score: 40, image: "platine.png", label: "Platine" },
+        { score: 80, image: "diamant.png", label: "Diamant" },
+        { score: 160, image: "diamant2.png", label: "Diamant II" },
+        { score: 320, image: "rubis.png", label: "Rubis Max" }
+      ];
+
+      let current = null;
+      let next = null;
+
+      for (let i = 0; i < levels.length; i++) {
+        if (score >= levels[i].score) {
+          current = levels[i];
+        } else {
+          next = levels[i];
+          break;
+        }
+      }
+
+      if (current) {
+        container.innerHTML = `
+          <p>🏆 Trophée : ${current.label}</p>
+          <img src="trophees/${current.image}" alt="${current.label}">
+        `;
+        if (next) {
+          container.innerHTML += `<p>➡️ Objectif suivant : ${next.label} (${next.score} pts)</p>`;
+        } else {
+          container.innerHTML += `<p>🚀 Score maximum atteint !</p>`;
+        }
+      } else {
+        container.innerHTML = `<p>🔓 Atteins 5 points pour débloquer ton premier trophée !</p>`;
+      }
+    }
+
+    loadGameOfTheDay();
+  </script>
+</body>
+</html>

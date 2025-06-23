@@ -1,0 +1,14 @@
+[
+    {
+      "date": "2025-06-25",
+      "instruction": "Classe ces animaux du plus lent au plus rapide",
+      "items": ["Tortue", "Fourmi", "Escargot"],
+      "solution": ["Escargot", "Tortue", "Fourmi"]
+    },
+    {
+        "date": "2025-06-23",
+        "instruction": "Classe par population (du plus grand au plus petit)",
+        "items": ["Paris", "Lyon", "Marseille", "Toulouse"],
+        "solution": ["Paris", "Marseille", "Lyon", "Toulouse"]
+    }
+  ]
