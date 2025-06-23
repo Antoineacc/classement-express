@@ -1,6 +1,6 @@
 [
     {
-      "date": "2025-06-25",
+      "date": "2025-06-24",
       "instruction": "Classe ces animaux du plus lent au plus rapide",
       "items": ["Tortue", "Fourmi", "Escargot"],
       "solution": ["Escargot", "Tortue", "Fourmi"]
