@@ -108,6 +108,7 @@
     <p class="instruction" id="instruction">Chargement du jeu...</p>
     <ul id="items"></ul>
     <p id="scoreDisplay">🔥 Score actuel : 0</p>
+    <p id="visitCount">Chargement du nombre de visites...</p>
     <div id="tropheeContainer"></div>
     <button id="validateBtn" onclick="checkOrder()" disabled>Valider</button>
     <button id="resetBtn">🔄 Rejouer</button>
@@ -316,6 +317,24 @@
         }
 
         loadGameOfTheDay();
+
+        async function updateVisitCount() {
+            try {
+                // Incrémente et récupère le compteur
+                const res = await fetch('https://api.countapi.xyz/hit/antoineacc/classementexpress');
+                const data = await res.json();
+
+                // Affiche le nombre de visites
+                document.getElementById('visitCount').textContent = `👁️ Visites totales : ${data.value}`;
+            } catch (e) {
+                console.error("Erreur CountAPI:", e);
+                document.getElementById('visitCount').textContent = "Erreur de chargement des visites.";
+            }
+        }
+
+        // Appelle la fonction dès que le jeu est chargé
+        updateVisitCount();
+
     </script>
 </body>
 
